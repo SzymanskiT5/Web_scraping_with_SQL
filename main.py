@@ -1,13 +1,14 @@
-from bs4 import BeautifulSoup
-from dataclasses import dataclass
 from datetime import date, datetime
+from dataclasses import dataclass
 from selenium import webdriver
-import random
+from database import Database
+from bs4 import BeautifulSoup
 import requests
+import random
+import sqlite3
 import time
 import lxml
 import os
-import sqlite3
 
 '''Web scraping from https://www.madbarz.com/blog, 
 unfortunately articles don't have authors, but for the needs
@@ -28,29 +29,27 @@ class Manager:
 
     def reformat_date(self, date):
         month_dict = {"January": "01",
-                        "February": "02",
-                        "March": "03",
-                        "April":  "04",
-                        "May": "05",
-                        "June": "06",
-                        "July": "07",
-                        "August": "08",
-                        "September": "09",
-                        "October": "10",
-                        "November": "11",
-                        "December": "12"}
+                      "February": "02",
+                      "March": "03",
+                      "April": "04",
+                      "May": "05",
+                      "June": "06",
+                      "July": "07",
+                      "August": "08",
+                      "September": "09",
+                      "October": "10",
+                      "November": "11",
+                      "December": "12"}
 
-        date = date.replace(",","")
-        date = date.replace("\n","")
+        date = date.replace(",", "")
+        date = date.replace("\n", "")
         month, day, year = date.split(" ")
         month = month_dict[month]
         new_date_format = f"{year}-{month}-{day}"
         return new_date_format
 
-
     def start_scraping(self):
         '''Madbarz has dynamic site, we need first scroll all over to the end'''
-
 
         url = "https://www.madbarz.com/blog/"
         cwd = os.getcwd()
@@ -80,19 +79,31 @@ class Manager:
                 article_link = url + "/".join(article_link_list)
                 link_request = requests.get(article_link).text
                 article_parser = BeautifulSoup(link_request, 'lxml')
-                title = article_parser.find(class_="blog__single--title").text
                 date_added = article_parser.find(class_='date').text
                 date_added = self.reformat_date(date_added)
+                title = article_parser.find(class_="blog__single--title").text
                 article_category = article_parser.find('div', class_="blog__single-category")
                 for hrefs in article_category.find_all("a"):
                     category_list.append(hrefs)
                 article_category = category_list[1].text
-                print(article_category)
+                content = article_parser.find('div', id="blog_content").text
+                author_name = self.return_author_name()
+                author_check = self.db.author_id_query(author_name)
+                if  author_check is False:
+                    # self.db.insert_author_to_db(author_name)
+                    print("Nie ma gnoja")
+                else:
+                    print(author_name)
 
 
 
+               # TODO trzeba ogarnac jakos zeby nie zmienialo co chwile
+
+                author = Author(author_name)
 
 
+
+        # TODO sprawdź datę i pobieraj tylko najnowsze do bazy
 
         finally:
             driver.quit()
@@ -106,10 +117,6 @@ class Manager:
         #     print(article.text)
 
 
-class Database:
-    def __init__(self, db:str):
-        self.db = db
-
 @dataclass
 class Author:
     name: str
@@ -120,20 +127,17 @@ class Article:
     tittle: str
     date: date
     content: str
-    author_id: int
     category: str
-
-
+    author_id: int
 
 
 def main():
     start = Manager()
-    start.start_scraping()
+    # start.start_scraping()
+    data = start.db
 
-
+    (data.author_id_query("kuku"))
 
 
 if __name__ == "__main__":
     main()
-
-
