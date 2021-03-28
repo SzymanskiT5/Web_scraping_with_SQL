@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import date, datetime
+
 class Database:
     def __init__(self, db: str):
         self.db = db
@@ -9,9 +10,9 @@ class Database:
     def create_author_table(self) -> None:
         with self as cursor:
             cursor.execute("""
-              CREATE TABLE IF NOT EXISTS author(
-                  id INTEGER PRIMARY KEY,
-                  name TEXT NOT NULL
+            CREATE TABLE IF NOT EXISTS author(
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL
     
                   )
               """)
@@ -38,9 +39,7 @@ class Database:
     def insert_author_to_db(self, author):
         with self as cursor:
             _SQL = 'INSERT INTO author(name) VALUES (?)'
-            cursor.execute(_SQL, (
-                author.name
-            ))
+            cursor.execute(_SQL, author)
 
     def create_article_table(self)-> None:
         with self as cursor:
@@ -61,7 +60,12 @@ class Database:
             
             """)
 
-
+    def authors_info(self):
+        with self as cursor:
+            _SQL = f"SELECT * FROM author "
+            cursor.execute(_SQL)
+            rows = cursor.fetchall()
+            return rows
 
     def __enter__(self):
         self.connector = sqlite3.connect(self.db)
