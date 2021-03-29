@@ -1,0 +1,2 @@
+class EndOfPageException(Exception):
+    pass

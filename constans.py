@@ -16,3 +16,4 @@ MONTH_DICT = {"January": "01",
               "October": "10",
               "November": "11",
               "December": "12"}
+AUTHOR_NAMES = ["John", "Anna", "Robert", "Matthew", "George", "Kamil"]
