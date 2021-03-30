@@ -1,5 +1,4 @@
 import os
-from selenium import webdriver
 
 SCROLL_PAUSE = 0.5
 URL = "https://www.madbarz.com/blog/"

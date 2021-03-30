@@ -1,6 +1,4 @@
 import sqlite3
-from dataclasses import dataclass
-from datetime import date, datetime
 from typing import Tuple, List
 
 class Database:
@@ -24,24 +22,22 @@ class Database:
             _SQL = f"SELECT id FROM author WHERE name like'{author}'"
             cursor.execute(_SQL)
             rows = cursor.fetchall()
-            if len(rows) == 0: ##TODO zwaracanie
+            if len(rows) == 0:
                 return False
             return rows[0]
 
-    # def check_if_author_exists(self, author):
-    #     with self as cursor:
-    #         _SQL = f"SELECT id FROM author WHERE name like'{author}%'"
-    #         cursor.execute(_SQL)
-    #         rows = cursor.fetchall()
-    #         if len(rows) == 0:
-    #             return False
-    #         else:
-    #             return True
 
-    def insert_author_to_db(self, author_name): ##TODO coś nie działa
+    def insert_author_to_db(self, author_name):
         with self as cursor:
-            _SQL = f"""INSERT INTO author(name) VALUES (?)"""
-            cursor.execute(_SQL, author_name)
+            _SQL = "INSERT INTO author(name) VALUES (?)"
+            cursor.execute(_SQL, [author_name])
+
+    def authors_info(self) -> List[Tuple[str]]:
+        with self as cursor:
+            _SQL = f"SELECT * FROM author "
+            cursor.execute(_SQL)
+            rows = cursor.fetchall()
+            return rows
 
     def create_article_table(self) -> None:
         with self as cursor:
@@ -56,18 +52,34 @@ class Database:
             
             foreign key (author_id) REFERENCES author(id)
             )
+    
 
-            
             
             
             """)
 
+    def insert_article_to_db(self, title, article_date, content, category, author_id):
+        with self as cursor:
+            _SQL = "INSERT INTO article(title, date, content, category, author_id) VALUES (?, ?, ?, ?, ?)" ##TODO something went wrong :)
+            cursor.execute(_SQL, [title, article_date, content, category, author_id])
+
+    def is_article_title_in_base(self, article_title):
+        with self as cursor:
+            _SQL = f"SELECT id FROM author WHERE name like'{article_title}'"
+            cursor.execute(_SQL)
+            rows = cursor.fetchall()
+            if len(rows) == 0:
+                return False
+            return rows[0]
+
+
     def authors_info(self) -> List[Tuple[str]]:
         with self as cursor:
-            _SQL = f"SELECT * FROM author "
+            _SQL = f"SELECT * FROM article "
             cursor.execute(_SQL)
             rows = cursor.fetchall()
             return rows
+
 
     def __enter__(self) -> sqlite3.Cursor:
         self.connector = sqlite3.connect(self.db)
@@ -78,15 +90,4 @@ class Database:
         self.connector.commit()
         self.connector.close()
 
-@dataclass
-class Author:
-    name: str
 
-
-@dataclass
-class Article:
-    tittle: str
-    date: date
-    content: str
-    category: str
-    author_id: int
