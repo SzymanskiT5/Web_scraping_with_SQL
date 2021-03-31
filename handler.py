@@ -12,12 +12,11 @@ import time
 import lxml
 import os
 
-
+@dataclass()
 class Handler:
     """Manager for controlling the process"""
+    db = Database("calisthenics_articles.db")
 
-    def __init__(self):
-        self.db = Database("calisthenics_articles.db")
 
     @staticmethod
     def check_date() -> date:
@@ -45,15 +44,28 @@ class Handler:
         return date_time_object
 
     def start_scraping(self) -> None:
-        self.start_page_scrolling()
+        self.run_driver()
+        # self.start_page_scrolling()
+        #
 
-    def start_page_scrolling(self) -> None:
-        """Madbarz has dynamic site, we need first scroll all over to the end"""
+    def run_driver(self) -> None:
+        """Set browser driver"""
 
-        driver = webdriver.Chrome(CWD + "/chromedriver.exe")
-        driver.implicitly_wait(30)
-        driver.get(URL)
+        print("Runing a driver...")
         try:
+            driver = webdriver.Chrome(CWD + "/chromedriver.exe")
+            self.start_page_scrolling(driver)
+            print("Finish!")
+
+        except common.exceptions.WebDriverException:
+            print("Webdriver error!")
+
+    def start_page_scrolling(self, driver) -> None:
+        """Madbarz has dynamic site, we need first scroll all over to the end"""
+        try:
+            driver.implicitly_wait(30)
+            driver.get(URL)
+
             last_height = driver.execute_script("return document.body.scrollHeight")
             while True:
                 last_height = self.scroll_down(driver, last_height)
@@ -65,6 +77,7 @@ class Handler:
         except common.exceptions.JavascriptException:
             print("JS command error!")
 
+
         finally:
             driver.quit()
 
@@ -74,6 +87,7 @@ class Handler:
         time.sleep(SCROLL_PAUSE)
         new_height = driver.execute_script("return document.body.scrollHeight")
         if new_height == curr_height:
+            print("Scraping...")
             raise EndOfPageException
 
         return new_height
@@ -94,7 +108,8 @@ class Handler:
         category_list = []
         date_added = article_parser.find(class_='date').text
         date_added = self.reformat_date(date_added)
-        title = article_parser.find(class_="blog__single--title").text
+        title = str(article_parser.find(class_="blog__single--title").text)
+
         article_category = article_parser.find('div', class_="blog__single-category")
         for hrefs in article_category.find_all("a"):
             category_list.append(hrefs)
@@ -103,7 +118,8 @@ class Handler:
         author_name = self.get_author_name()
         author = AuthorHandler(author_name)
         author_id = author.get_author_id_or_add_to_base_new_one()
-        article = ArticleHandler(title, date_added, content, article_category, author_id)
+        article = ArticleHandler(title, str(date_added), content, article_category, author_id)
+        print(article.title)
         article.is_article_title_in_base_and_add_to_base()
 
 
@@ -119,7 +135,6 @@ class Handler:
 
 @dataclass
 class AuthorHandler(Handler):
-    db = Database("calisthenics_articles.db")
     name: str
 
     def insert_author_to_db(self) -> None:
@@ -130,20 +145,20 @@ class AuthorHandler(Handler):
 
     def get_author_id_or_add_to_base_new_one(self) -> int:
         id_check = self.get_author_id()
+
         if not id_check:
             self.insert_author_to_db()
             author_id = self.db.get_author_id(self.name)
-            return author_id
 
+            return author_id
         return id_check
 
 
-
+#date
 @dataclass
 class ArticleHandler(Handler):
-    db = Database("calisthenics_articles.db")
     title: str
-    article_date: date
+    article_date: str
     content: str
     category: str
     author_id: int

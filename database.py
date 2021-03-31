@@ -17,22 +17,22 @@ class Database:
                   )
               """)
 
-    def get_author_id(self, author):
+    def get_author_id(self, author) -> int or False:
         with self as cursor:
-            _SQL = f"SELECT id FROM author WHERE name like'{author}'"
+            _SQL = f'SELECT id FROM author WHERE name like "{author}"'
             cursor.execute(_SQL)
-            rows = cursor.fetchall()
-            if len(rows) == 0:
+            rows = cursor.fetchone()
+            if not rows:
                 return False
             return rows[0]
 
 
-    def insert_author_to_db(self, author_name):
+    def insert_author_to_db(self, author_name)-> None:
         with self as cursor:
             _SQL = "INSERT INTO author(name) VALUES (?)"
             cursor.execute(_SQL, [author_name])
 
-    def authors_info(self) -> List[Tuple[str]]:
+    def get_authors_info(self) -> List[Tuple[str]]:
         with self as cursor:
             _SQL = f"SELECT * FROM author "
             cursor.execute(_SQL)
@@ -45,7 +45,7 @@ class Database:
             CREATE TABLE IF NOT EXISTS article(
             id INTEGER PRIMARY KEY AUTOINCREMENT ,
             title TEXT NOT NULL,
-            date DATE NOT NULL,
+            added_date text NOT NULL,
             content TEXT NOT NULL,
             category TEXT NOT NULL,
             author_id INTEGER,
@@ -58,22 +58,22 @@ class Database:
             
             """)
 
-    def insert_article_to_db(self, title, article_date, content, category, author_id):
+    def insert_article_to_db(self, title, article_date, content, category, author_id)-> None:
         with self as cursor:
-            _SQL = "INSERT INTO article(title, date, content, category, author_id) VALUES (?, ?, ?, ?, ?)" ##TODO something went wrong :)
-            cursor.execute(_SQL, [title, article_date, content, category, author_id])
+            _SQL = "INSERT INTO article(title, added_date, content, category, author_id) VALUES (?, ?, ?, ?, ?)"
+            cursor.execute(_SQL, (title, str(article_date), content, category, int(author_id)))
 
-    def is_article_title_in_base(self, article_title):
+    def is_article_title_in_base(self, article_title) -> int or False:
         with self as cursor:
-            _SQL = f"SELECT id FROM author WHERE name like'{article_title}'"
+            _SQL = f'SELECT id FROM article WHERE title like "{article_title}"'
             cursor.execute(_SQL)
-            rows = cursor.fetchall()
-            if len(rows) == 0:
+            rows = cursor.fetchone()
+            if not rows:
                 return False
             return rows[0]
 
 
-    def authors_info(self) -> List[Tuple[str]]:
+    def article_info(self) -> List[Tuple[str]]:
         with self as cursor:
             _SQL = f"SELECT * FROM article "
             cursor.execute(_SQL)
