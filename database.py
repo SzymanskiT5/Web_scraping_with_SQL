@@ -63,14 +63,20 @@ class Database:
             _SQL = "INSERT INTO article(title, added_date, content, category, author_id) VALUES (?, ?, ?, ?, ?)"
             cursor.execute(_SQL, (title, str(article_date), content, category, int(author_id)))
 
-    def is_article_title_in_base(self, article_title) -> int or False:
+    def is_article_title_in_base(self, article_name) -> int or False:
+
         with self as cursor:
-            _SQL = f'SELECT id FROM article WHERE title like "{article_title}"'
+            _SQL = f'''SELECT id FROM article WHERE name LIKE {article_name}'''
             cursor.execute(_SQL)
             rows = cursor.fetchone()
-            if not rows:
-                return False
-            return rows[0]
+            name_found = [name for name in rows if name == article_name]
+            print(name_found)
+            if name_found:
+                return True
+            return False
+
+            #     return False
+            # return rows[0]
 
 
     def article_info(self) -> List[Tuple[str]]:

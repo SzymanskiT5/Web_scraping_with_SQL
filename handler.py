@@ -168,8 +168,9 @@ class ArticleHandler(Handler):
 
     def is_article_title_in_base_and_add_to_base(self):
         title_check = self.db.is_article_title_in_base(self.title)
-        if not title_check:
-            self.insert_article_to_db()
+        return title_check
+        # if not title_check:
+        #     self.insert_article_to_db()
 
 
 
