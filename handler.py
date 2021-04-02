@@ -12,7 +12,8 @@ import time
 import lxml
 import os
 
-@dataclass()
+
+@dataclass
 class Handler:
     """Manager for controlling the process"""
     db = Database("calisthenics_articles.db")
@@ -52,6 +53,7 @@ class Handler:
         """Set browser driver"""
 
         print("Runing a driver...")
+        print()
         try:
             driver = webdriver.Chrome(CWD + "/chromedriver.exe")
             self.start_page_scrolling(driver)
@@ -72,7 +74,7 @@ class Handler:
 
         except EndOfPageException:
             main_blog_site_parser = BeautifulSoup(driver.page_source, "lxml")
-            self.get_article_link(main_blog_site_parser)
+            self.get_scrap_info(main_blog_site_parser)
 
         except common.exceptions.JavascriptException:
             print("JS command error!")
@@ -88,40 +90,65 @@ class Handler:
         new_height = driver.execute_script("return document.body.scrollHeight")
         if new_height == curr_height:
             print("Scraping...")
+            print()
             raise EndOfPageException
 
         return new_height
 
-    def get_article_link(self, main_blog_parser) -> None:
-        """Getting direct article links """
+    def get_scrap_info(self, main_blog_site_parser):
 
-        for article in main_blog_parser.find_all('article', class_="blog__post"):
-            blog_class = article.find(class_="blog__post--content")
-            article_link = blog_class.find('a').get('href')
-            article_link_list = article_link.split("/")[2:]
-            article_link = URL + "/".join(article_link_list)
-            link_request = requests.get(article_link).text
-            article_parser = BeautifulSoup(link_request, 'lxml')
-            self.get_article_info(article_parser)
+        for article_parser in main_blog_site_parser.find_all('article', class_="blog__post"):
+            article_link = self.get_article_link(article_parser)
+            article_date = self.get_article_date(article_link)
+            category = self.get_article_category(article_link)
+            title = self.get_article_title(article_link)
+            content = self.get_article_content(article_link)
+            author = self.get_author_object()
+            author_id = author.get_author_id_or_add_to_base_new_one()
+            article =self.get_article_object(title, article_date, content, category, author_id)
 
-    def get_article_info(self, article_parser) -> None:
-        category_list = []
-        date_added = article_parser.find(class_='date').text
+            # author_id = author.get_author_id_or_add_to_base_new_one()
+            # article.is_article_title_in_base_and_add_to_base()
+
+    def get_article_link(self, article_parser) -> BeautifulSoup:
+        """Get direct article links """
+        blog_class = article_parser.find(class_="blog__post--content")
+        article_link = blog_class.find('a').get('href')
+        article_link_list = article_link.split("/")[2:]
+        article_link = URL + "/".join(article_link_list)
+        link_request = requests.get(article_link).text
+        article_parser = BeautifulSoup(link_request, 'lxml')
+        return article_parser
+
+    def get_article_date(self, article_link) -> date:
+        date_added = article_link.find(class_='date').text
         date_added = self.reformat_date(date_added)
-        title = str(article_parser.find(class_="blog__single--title").text)
+        return date_added
 
-        article_category = article_parser.find('div', class_="blog__single-category")
+    def get_article_title(self, article_link) -> str:
+        title = str(article_link.find(class_="blog__single--title").text)
+        return title
+
+    def get_article_category(self, article_link) -> str:
+        category_list = []
+        article_category = article_link.find('div', class_="blog__single-category")
         for hrefs in article_category.find_all("a"):
             category_list.append(hrefs)
         article_category = category_list[1].text
-        content = article_parser.find('div', id="blog_content").text
+        return article_category
+
+    def get_article_content(self, article_link) -> str:
+        content = article_link.find('div', id="blog_content").text
+        return content
+
+    def get_author_object(self):
         author_name = self.get_author_name()
         author = AuthorHandler(author_name)
-        author_id = author.get_author_id_or_add_to_base_new_one()
-        article = ArticleHandler(title, str(date_added), content, article_category, author_id)
-        print(article.title)
-        article.is_article_title_in_base_and_add_to_base()
+        return author
 
+    def get_article_object(self, title, date_added, content, article_category, author_id) :
+        article = ArticleHandler(title, str(date_added), content, article_category, author_id)
+        return article
 
 
 
