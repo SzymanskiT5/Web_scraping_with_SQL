@@ -5,6 +5,7 @@ from exceptions import EndOfPageException
 from selenium import webdriver, common
 from datetime import date, datetime
 from bs4 import BeautifulSoup
+import pyinputplus as pyip
 import requests
 import random
 import sqlite3
@@ -17,6 +18,63 @@ import os
 class Handler:
     """Manager for controlling the process"""
     db = Database("calisthenics_articles.db")
+    choice = None
+
+
+    def user_interface(self):
+        print("Welcome!")
+        print("Madbarz webscraping made by Sebastian")
+
+        while True:
+            user_choice = pyip.inputMenu(["Start scraping",
+                                          "Show authors",
+                                          "Show all content from all authors",
+                                          "Show all content from one author",
+                                         "Show articles sorted by adding date"], "What would you like to do?\n",
+                                         numbered=True)
+            if user_choice == "Start scraping":
+                self.start_scraping()
+
+            elif user_choice == "Show authors":
+                result = self.db.get_authors_info()
+                for author_id, author_name in result:
+                    print(f"{author_id}. {author_name}")
+
+            elif user_choice == "Show all content from all authors":
+                result = self.db.get_all_author_article_content_date()
+                for author_name, article_title, content, date_added in result:
+                    print(f"{author_name} : {article_title}")
+                    print(content)
+                    print(f"Date added: {date_added} ")
+                    print()
+
+
+            elif user_choice == "Show all content from one author":
+                authors_tuple = self.db.get_authors_names()
+                print(authors_tuple)
+                # author_choice = pyip.inputMenu(authors_tuple,"From?", numbered=True)
+                # author = self.db.get_content_from_selected_author(author_choice)
+                # for author_name, article_title, content, date_added in author:
+                #     print(f"{author_name} : {article_title}")
+                #     print(content)
+                #     print(f"Date added: {date_added} ")
+                #     print()
+
+
+
+
+
+
+
+
+    def check_if_database_exists(self):
+        for (root, dirs, files) in os.walk(CWD):
+            if files == self.db:
+                "Database located!"
+                return True
+
+            return False
+
 
 
     @staticmethod
@@ -46,8 +104,6 @@ class Handler:
 
     def start_scraping(self) -> None:
         self.run_driver()
-        # self.start_page_scrolling()
-        #
 
     def run_driver(self) -> None:
         """Set browser driver"""
@@ -79,7 +135,6 @@ class Handler:
         except common.exceptions.JavascriptException:
             print("JS command error!")
 
-
         finally:
             driver.quit()
 
@@ -106,9 +161,7 @@ class Handler:
             author = self.get_author_object()
             author_id = author.get_author_id_or_add_to_base_new_one()
             article =self.get_article_object(title, article_date, content, category, author_id)
-
-            # author_id = author.get_author_id_or_add_to_base_new_one()
-            # article.is_article_title_in_base_and_add_to_base()
+            article.is_article_title_in_base_and_add_to_base()
 
     def get_article_link(self, article_parser) -> BeautifulSoup:
         """Get direct article links """
@@ -125,11 +178,13 @@ class Handler:
         date_added = self.reformat_date(date_added)
         return date_added
 
-    def get_article_title(self, article_link) -> str:
+    @staticmethod
+    def get_article_title(article_link) -> str:
         title = str(article_link.find(class_="blog__single--title").text)
         return title
 
-    def get_article_category(self, article_link) -> str:
+    @staticmethod
+    def get_article_category(article_link) -> str:
         category_list = []
         article_category = article_link.find('div', class_="blog__single-category")
         for hrefs in article_category.find_all("a"):
@@ -137,7 +192,8 @@ class Handler:
         article_category = category_list[1].text
         return article_category
 
-    def get_article_content(self, article_link) -> str:
+    @staticmethod
+    def get_article_content(article_link) -> str:
         content = article_link.find('div', id="blog_content").text
         return content
 
@@ -146,9 +202,14 @@ class Handler:
         author = AuthorHandler(author_name)
         return author
 
-    def get_article_object(self, title, date_added, content, article_category, author_id) :
+    @staticmethod
+    def get_article_object(title, date_added, content, article_category, author_id) :
         article = ArticleHandler(title, str(date_added), content, article_category, author_id)
+        article.make_apostrophe_and_qutoes_escaped()
         return article
+
+
+
 
 
 
@@ -181,7 +242,6 @@ class AuthorHandler(Handler):
         return id_check
 
 
-#date
 @dataclass
 class ArticleHandler(Handler):
     title: str
@@ -195,9 +255,14 @@ class ArticleHandler(Handler):
 
     def is_article_title_in_base_and_add_to_base(self):
         title_check = self.db.is_article_title_in_base(self.title)
-        return title_check
-        # if not title_check:
-        #     self.insert_article_to_db()
+        if not title_check:
+            self.insert_article_to_db()
+
+    def make_apostrophe_and_qutoes_escaped(self) -> None:
+        '''If we don't escape apostorophes and quotes it can causes SQL queries problems'''
+        self.title = self.title.replace('"', '""').replace("'", "''")
+
+
 
 
 
