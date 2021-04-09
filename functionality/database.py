@@ -9,6 +9,18 @@ class Database:
         self.create_article_table()
         self.create_author_table()
 
+    def check_if_author_table_exists(self) -> bool:
+        with self as cursor:
+            _SQL = """SELECT name FROM sqlite_master WHERE type='table' AND name= 'author'"""
+            cursor.execute(_SQL)
+            return bool(cursor.fetchone())
+
+    def check_if_article_table_exists(self) -> bool:
+        with self as cursor:
+            _SQL = """SELECT name FROM sqlite_master WHERE type='table' AND name= 'article'"""
+            cursor.execute(_SQL)
+            return bool(cursor.fetchone())
+
     def create_author_table(self) -> None:
         with self as cursor:
             cursor.execute("""
@@ -28,7 +40,7 @@ class Database:
                 return False
             return rows[0]
 
-    def insert_author_to_db(self, author_name)-> None:
+    def insert_author_to_db(self, author_name) -> None:
         with self as cursor:
             _SQL = "INSERT INTO author(name) VALUES (?)"
             cursor.execute(_SQL, [author_name])
@@ -73,14 +85,11 @@ class Database:
             cursor.execute(_SQL, (title, str(article_date), content, category, int(author_id)))
 
     def is_article_title_in_base(self, article_title) -> bool:
-
         with self as cursor:
             _SQL = f"SELECT id FROM article WHERE title LIKE '{article_title}'"
             cursor.execute(_SQL)
             rows = cursor.fetchone()
-            if rows:
-                return True
-            return False
+            return bool(rows)
 
     def get_article_info(self) -> List[Tuple[str]]:
         with self as cursor:
@@ -104,8 +113,7 @@ class Database:
             rows = cursor.fetchall()
             return rows
 
-
-    def get_content_from_selected_author(self, author_name):
+    def get_content_from_selected_author(self, author_name) -> List[Tuple[str]]:
         with self as cursor:
             _SQL = f"SELECT name, title, content, date_added, category  FROM author INNER JOIN article on " \
                    f"author.id = article.author_id WHERE name LIKE '{author_name}'"
@@ -116,12 +124,13 @@ class Database:
     def get_content_ordered_by_date(self, order) -> List[Tuple[str]]:
         with self as cursor:
             _SQL = f"SELECT name, title, content, date_added, category FROM author INNER JOIN article on " \
-                    f"author.id = article.author_id ORDER BY date_added {order}"
+                   f"author.id = article.author_id ORDER BY date_added {order}"
             cursor.execute(_SQL)
             rows = cursor.fetchall()
             return rows
 
     def get_articles_dates(self) -> List:
+        '''We need to have unique dates, that's why distinct is used'''
         with self as cursor:
             _SQL = f"SELECT DISTINCT date_added FROM article"
             cursor.execute(_SQL)
@@ -132,7 +141,7 @@ class Database:
     def get_articles_from_selected_date(self, date_added) -> List[Tuple[str]]:
         with self as cursor:
             _SQL = f"SELECT  name, title, content, date_added, category FROM author INNER JOIN article on " \
-                    f"author.id = article.author_id WHERE date_added LIKE '{date_added}'"
+                   f"author.id = article.author_id WHERE date_added LIKE '{date_added}'"
             cursor.execute(_SQL)
             rows = cursor.fetchall()
             return rows
@@ -140,12 +149,12 @@ class Database:
     def get_articles_from_selected_category(self, category) -> List[Tuple[str]]:
         with self as cursor:
             _SQL = f"SELECT  name, title, content, date_added, category FROM author INNER JOIN article on " \
-                    f"author.id = article.author_id WHERE category LIKE '{category}'"
+                   f"author.id = article.author_id WHERE category LIKE '{category}'"
             cursor.execute(_SQL)
             rows = cursor.fetchall()
             return rows
 
-    def get_last_article_date(self):
+    def get_last_article_date(self) -> date:
         with self as cursor:
             _SQL = f"SELECT date_added FROM article ORDER BY date_added DESC"
             cursor.execute(_SQL)
@@ -153,15 +162,8 @@ class Database:
             if rows:
                 date_time_object = date.fromisoformat(rows[0])
                 return date_time_object
-            return
 
-    def delete_last_article(self, title):
-        '''To make sure that up to date logic works'''
-        with self as cursor:
-            _SQL = f"DELETE FROM article WHERE title LIKE '{title}' "
-            cursor.execute(_SQL)
-
-    def delete_all(self):
+    def delete_all(self) -> None:
         with self as cursor:
             _SQL = f"DROP TABLE author"
             cursor.execute(_SQL)
@@ -176,5 +178,3 @@ class Database:
     def __exit__(self, exc_type, exc_val, exc_trace) -> None:
         self.connector.commit()
         self.connector.close()
-
-

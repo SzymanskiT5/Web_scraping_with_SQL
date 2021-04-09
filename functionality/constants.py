@@ -15,5 +15,5 @@ MONTH_DICT = {"January": "01",
               "October": "10",
               "November": "11",
               "December": "12"}
-ORDER_DICT = {"Descending": "DESC","Ascending": "ASC"}
+ORDER_DICT = {"Descending": "DESC", "Ascending": "ASC"}
 AUTHOR_NAMES = ["John", "Anna", "Robert", "Matthew", "George", "Kamil"]

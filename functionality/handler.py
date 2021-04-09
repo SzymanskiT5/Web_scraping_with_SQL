@@ -1,17 +1,16 @@
-from dataclasses import dataclass
-from constants import SCROLL_PAUSE, URL, MONTH_DICT, CWD, AUTHOR_NAMES, ORDER_DICT
-from database import Database
-from exceptions import EndOfPageException, UpToDateException
+from functionality.constants import SCROLL_PAUSE, URL, MONTH_DICT, CWD, AUTHOR_NAMES, ORDER_DICT
+from functionality.exceptions import EndOfPageException, UpToDateException
 from selenium import webdriver, common
 from datetime import date, datetime
+from dataclasses import dataclass
+from functionality.database import Database
 from bs4 import BeautifulSoup
 import pyinputplus as pyip
 import requests
 import random
 import sqlite3
 import time
-import lxml
-import os
+from functionality.menu import Menu
 
 
 @dataclass
@@ -20,9 +19,18 @@ class Handler:
     db = Database("calisthenics_articles.db")
     choice_to_print = None
 
+    def __init__(self):
+        self.menu = Menu(check_for_updates=self.check_for_updates,
+                         show_authors=self.show_authors,
+                         show_all_content_from_all_authors=self.show_all_content_from_all_authors,
+                         show_all_content_from_one_author=self.show_all_content_from_one_author,
+                         show_articles_sorted_by_adding_date=self.show_articles_sorted_by_adding_date,
+                         show_articles_selected_from_date=self.show_articles_selected_from_date,
+                         show_articles_selected_from_category=self.show_articles_selected_from_category,
+                         delete_all=self.db.delete_all
+                         )
 
-
-    def check_if_database_has_data_or_is_empty(self):
+    def check_if_database_has_data_or_is_empty(self) -> None:
         """To make a choice, we need to first have a database with some record"""
         print("Welcome!")
         print("Madbarz webscraping made by Sebastian")
@@ -38,67 +46,48 @@ class Handler:
                 print("Your database is empty! We need to scrap!")
                 user_choice = pyip.inputYesNo("Do you want to start? Y/N\n", yesVal="Y", noVal="N")
                 if user_choice == "Y":
+                    self.db.create_author_table()
+                    self.db.create_article_table()
                     self.check_for_updates()
                 elif user_choice == "N":
                     print("Bye!")
+                    break
 
-    def user_interface(self):
+    def user_interface(self) -> None:
+        self.menu.execute_menu()
 
-        user_choice = pyip.inputMenu(["Check for updates",
-                                      "Show authors",
-                                      "Show all content from all authors",
-                                      "Show all content from one author",
-                                     "Show articles sorted by adding date",
-                                      "Show articles selected from date",
-                                      "Show articles selected from category",
-                                      "Delete all"],
-                                     "What would you like to do?\n",
-                                     numbered=True)
+    def show_authors(self) -> None:
+        result = self.db.get_authors_info()
+        for author_id, author_name in result:
+            print(f"{author_id}. {author_name}")
 
-        self.execute_user_choice(user_choice)
+    def show_all_content_from_all_authors(self) -> None:
+        self.choice_to_print = self.db.get_all_author_article_content_date()
+        self.print_author_title_content_date_added()
 
-    def execute_user_choice(self, user_choice) -> None:
-        if user_choice == "Check for updates":
-            self.check_for_updates()
+    def show_all_content_from_one_author(self) -> None:
+        authors_list = self.db.get_authors_names()
+        author_choice = pyip.inputMenu(authors_list, "From?\n", numbered=True)
+        self.choice_to_print = self.db.get_content_from_selected_author(author_choice)
+        self.print_author_title_content_date_added()
 
-        elif user_choice == "Show authors":
-            result = self.db.get_authors_info()
-            for author_id, author_name in result:
-                print(f"{author_id}. {author_name}")
+    def show_articles_sorted_by_adding_date(self) -> None:
+        order = pyip.inputMenu(["Descending", "Ascending"], "How would you like to show?\n", numbered=True)
+        choice = ORDER_DICT[order]
+        self.choice_to_print = self.db.get_content_ordered_by_date(choice)
+        self.print_author_title_content_date_added()
 
-        elif user_choice == "Show all content from all authors":
-            self.choice_to_print = self.db.get_all_author_article_content_date()
-            self.print_author_title_content_date_added()
+    def show_articles_selected_from_date(self) -> None:
+        articles_date = self.db.get_articles_dates()
+        date_choice = pyip.inputMenu(articles_date, "From?\n", numbered=True)
+        self.choice_to_print = self.db.get_articles_from_selected_date(date_choice)
+        self.print_author_title_content_date_added()
 
-        elif user_choice == "Show all content from one author":
-            authors_list = self.db.get_authors_names()
-            author_choice = pyip.inputMenu(authors_list, "From?\n", numbered=True)
-            self.choice_to_print = self.db.get_content_from_selected_author(author_choice)
-            self.print_author_title_content_date_added()
-
-        elif user_choice == "Show articles sorted by adding date":
-            order = pyip.inputMenu(["Descending", "Ascending"], "How would you like to show?\n", numbered=True)
-            choice = ORDER_DICT[order]
-            self.choice_to_print = self.db.get_content_ordered_by_date(choice)
-            self.print_author_title_content_date_added()
-
-        elif user_choice == "Show articles selected from date":
-            articles_date = self.db.get_articles_dates()
-            date_choice = pyip.inputMenu(articles_date, "From?\n", numbered=True)
-            self.choice_to_print = self.db.get_articles_from_selected_date(date_choice)
-            self.print_author_title_content_date_added()
-
-        elif user_choice == "Show articles selected from category":
-            articles_category = self.db.get_categories()
-            article_choice = pyip.inputMenu(articles_category, "From?\n", numbered=True)
-            self.choice_to_print = self.db.get_articles_from_selected_category(article_choice)
-            self.print_author_title_content_date_added()
-
-        elif user_choice == "Delete all":
-            self.db.delete_all()
-
-
-
+    def show_articles_selected_from_category(self) -> None:
+        articles_category = self.db.get_categories()
+        article_choice = pyip.inputMenu(articles_category, "From?\n", numbered=True)
+        self.choice_to_print = self.db.get_articles_from_selected_category(article_choice)
+        self.print_author_title_content_date_added()
 
     def print_author_title_content_date_added(self) -> None:
         for author_name, article_title, content, date_added, category in self.choice_to_print:
@@ -108,32 +97,11 @@ class Handler:
             print(f"Date added: {date_added} ")
             print()
 
-
     @staticmethod
     def check_date() -> date:
         """Checking current date"""
 
         return datetime.date(datetime.now())
-
-
-    @staticmethod
-    def get_author_name() -> str:
-        """Unfortunately articles don't have authors, but for the needs
-            I've made some random names table."""
-
-        return random.choice(AUTHOR_NAMES)
-
-    @staticmethod
-    def reformat_date(article_date) -> date:
-        """Making date format friendly to datetime library"""
-
-        article_date = article_date.replace(",", "").replace("\n", "")
-        month, day, year = article_date.split(" ")
-        month = MONTH_DICT[month]
-        new_date_format = f"{year}-{month}-{day}"
-        date_time_object = date.fromisoformat(new_date_format)
-        return date_time_object
-
 
     def check_for_updates(self) -> None:
         self.run_driver()
@@ -204,11 +172,10 @@ class Handler:
             article = self.get_article_object(title, article_date, content, category, author_id)
             article.insert_article_to_db()
 
-    def is_up_to_date(self, tittle_check, date_comparer):
+    @staticmethod
+    def is_up_to_date(tittle_check, date_comparer) -> None:
         if tittle_check and date_comparer:
             raise UpToDateException
-
-
 
     @staticmethod
     def compare_dates(last_date, article_date) -> bool:
@@ -216,7 +183,6 @@ class Handler:
             return False
         if last_date > article_date:
             return True
-
 
     def get_article_link(self, article_parser) -> BeautifulSoup:
         """Get direct article links """
@@ -234,6 +200,25 @@ class Handler:
         return date_added
 
     @staticmethod
+    def get_author_name() -> str:
+        """Unfortunately articles don't have authors, but for the needs
+            I've made some random names table."""
+
+        return random.choice(AUTHOR_NAMES)
+
+    @staticmethod
+    def reformat_date(article_date) -> date:
+        """Making date format friendly to datetime library"""
+        """ Madbarz has dates format like January 28, 2020"""
+
+        article_date = article_date.replace(",", "").replace("\n", "")
+        month, day, year = article_date.split(" ")
+        month = MONTH_DICT[month]
+        new_date_format = f"{year}-{month}-{day}"
+        date_time_object = date.fromisoformat(new_date_format)
+        return date_time_object
+
+    @staticmethod
     def get_article_title(article_link) -> str:
         title = str(article_link.find(class_="blog__single--title").text)
         return title
@@ -248,7 +233,6 @@ class Handler:
         if article_category:
             return article_category
         return "Other"
-
 
     @staticmethod
     def get_article_content(article_link) -> str:
@@ -266,6 +250,7 @@ class Handler:
         article.make_apostrophe_and_qutoes_escaped()
         return article
 
+
 @dataclass
 class AuthorHandler(Handler):
     name: str
@@ -277,14 +262,13 @@ class AuthorHandler(Handler):
         return self.db.get_author_id(self.name)
 
     def get_author_id_or_add_to_base_new_one(self) -> int:
-        id_check = self.get_author_id()
+        author_id = self.get_author_id()
 
-        if not id_check:
+        if not author_id:
             self.insert_author_to_db()
             author_id = self.db.get_author_id(self.name)
 
-            return author_id
-        return id_check
+        return author_id
 
 
 @dataclass
@@ -298,21 +282,6 @@ class ArticleHandler(Handler):
     def insert_article_to_db(self) -> None:
         self.db.insert_article_to_db(self.title, self.article_date, self.content, self.category, self.author_id)
 
-    def is_article_title_in_base_and_add_to_base(self)-> None:
-        title_check = self.db.is_article_title_in_base(self.title)
-        if not title_check:
-            self.insert_article_to_db()
-
     def make_apostrophe_and_qutoes_escaped(self) -> None:
         '''If we don't escape apostorophes and quotes it can causes SQL queries problems'''
         self.title = self.title.replace('"', '""').replace("'", "''")
-
-
-
-
-
-
-
-
-
-
