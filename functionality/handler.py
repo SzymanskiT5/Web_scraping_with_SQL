@@ -1,3 +1,4 @@
+from __future__ import annotations
 from functionality.constants import SCROLL_PAUSE, URL, MONTH_DICT, CWD, AUTHOR_NAMES, ORDER_DICT
 from functionality.exceptions import EndOfPageException, UpToDateException
 from selenium import webdriver, common
@@ -239,13 +240,13 @@ class Handler:
         content = article_link.find('div', id="blog_content").text
         return content
 
-    def get_author_object(self):
+    def get_author_object(self) -> AuthorHandler:
         author_name = self.get_author_name()
         author = AuthorHandler(author_name)
         return author
 
     @staticmethod
-    def get_article_object(title, date_added, content, article_category, author_id):
+    def get_article_object(title, date_added, content, article_category, author_id) -> ArticleHandler:
         article = ArticleHandler(title, str(date_added), content, article_category, author_id)
         article.make_apostrophe_and_qutoes_escaped()
         return article
