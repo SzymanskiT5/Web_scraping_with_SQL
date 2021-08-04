@@ -31,5 +31,5 @@ Open your terminal in project folder and type:
 <!-- CONTACT -->
 ## Contact
 
-Sebastian Szymański - shadow.smoke7@gmail.com
+Sebastian Szymański - sebastian.szymanski.t5@gmail.com
 
